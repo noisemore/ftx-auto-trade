@@ -5,6 +5,9 @@ import pandas as pd
 import datetime
 from datetime import timezone
 import numpy as np
+import os
+import math
+import os.path
 
 #import plotly.graph_objects as go
 
@@ -14,17 +17,18 @@ import numpy as np
 pd.set_option('display.max_column', None)
 pd.set_option('display.max_rows', None)
 pd.set_option('display.max_seq_items', None)
-pd.set_option('display.max_colwidth', 1000)
+pd.set_option('display.max_colwidth', 500)
 pd.set_option('expand_frame_repr', False)
 
 # ---------------------------------------------------------------------------------------- #
 
 # 定義K棒時間
-resolution_1M = 60
-resolution_15M = 900
-resolution_1H = 3600
-resolution_4H = 14400
-resolution_1D = 86400
+# resolution_1M = 60
+# resolution_15M = 900
+# resolution_1H = 3600
+# resolution_4H = 14400
+# resolution_1D = 86400
+resolution = {"1m": 60, "5m": 300, '15m': 900, '30m': 1800, "1h": 3600, '2h': 7200, "4h": 14400, "1d": 86400}
 
 # ---------------------------------------------------------------------------------------- #
 
@@ -43,6 +47,12 @@ def end_dt_to_unix(y,m,d):
 
 def get_ftx_historial_market(symbol, kline, start_time, end_time):
     
+    if os.path.isdir('history'):
+        print("history file already created")
+    else:
+        os.mkdir('history')
+        print('create history file')
+
     market_url = 'https://ftx.com/api/markets/{}/candles?resolution={}&start_time={}&end_time={}'.format(symbol, kline, start_time, end_time) # 設定URL
     
     try: # 除錯
@@ -89,17 +99,61 @@ def get_ftx_historial_market(symbol, kline, start_time, end_time):
 
 def main():
 
-    symbol = "BTC/USD"
-    kline = resolution_15M
-    start_time = start_dt_to_unix(2021,7,4)
-    end_time = end_dt_to_unix(2021,7,5)
+    symbol = "FTT/USD"
+    kline = resolution['15m']
+    start_time = start_dt_to_unix(2021,1,20)
+    end_time = end_dt_to_unix(2021,1,21)
 
     historical_data = get_ftx_historial_market(symbol, kline, start_time, end_time)
 
     print(historical_data)
 
-    historical_data.to_csv('./history/test.csv', index = False)
+# ---------------------------------------------------------------------------------------- #
 
+# 定義 kline 的 resolution 存檔用
+
+    if kline == 60:
+        kline = "1m"
+
+    elif kline == 300:
+        kline = "5m"
+
+    elif kline == 900:
+        kline = "15m"
+
+    elif kline == 1800:
+        kline = "30m"
+
+    elif kline == 3600:
+        kline = "1h"
+
+    elif kline == 7200:
+        kline = "2h"
+
+    elif kline == 14400:
+        kline = "4h"
+
+    else:
+        kline = "1d"
+
+# ---------------------------------------------------------------------------------------- #
+
+    symbol = symbol.replace("/","-").upper() # 存檔時不能有 "/"
+
+    filename = './history/{}-{}-data.csv'.format(symbol, kline)
+
+    if  os.path.isfile(filename):
+        temp_historical_data = pd.read_csv(filename,index_col = "time",parse_dates = ["time"])
+        if historical_data.index not in temp_historical_data.index:
+            historical_data = historical_data.append(temp_historical_data)
+            temp_historical_data.to_csv(filename)
+            print("已更新到最新資料")
+        else:
+            print("已是最新資料，無需更新")
+    else:
+        historical_data.to_csv(filename)
+        print("此為新資料，已創建csv檔")
+    #historical_data.to_csv(filename)
 # ---------------------------------------------------------------------------------------- #
 
 main()
