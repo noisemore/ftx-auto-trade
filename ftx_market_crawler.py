@@ -1,17 +1,14 @@
 # ---------------------------------------------------------------------------------------- #
+
 import os.path
-from pandas.core.indexes.base import Index
 import requests
 import pandas as pd
 import datetime
-from datetime import timedelta, datetime, timezone
+from datetime import datetime
 import time
-from dateutil import parser
 import numpy as np
 import os
-import math
 import os.path
-import plotly.graph_objects as go
 
 # ---------------------------------------------------------------------------------------- #
 
@@ -53,7 +50,7 @@ def end_dt_to_unix(y,m,d):
 
 # ---------------------------------------------------------------------------------------- #
 
-def get_ftx_historial_market(symbol, kline, start_time):
+def get_ftx_historial_data(symbol, kline, start_time):
     
     if os.path.isdir('history'):
 
@@ -77,7 +74,7 @@ def get_ftx_historial_market(symbol, kline, start_time):
 
         return None
     
-    # historical_data = None # 為什麼我要放這一行?
+    historical_data = None # 為什麼我要放這一行?
 
     if request_data.status_code == 200: # 除錯
 
@@ -165,7 +162,25 @@ def get_ftx_historial_market(symbol, kline, start_time):
 
 # ---------------------------------------------------------------------------------------- #
 
-def get_all_history_data_time(start_time):
+def get_ftx_all_historial_data(symbol, kline, start_time):
+
+    if kline == 60: interval = "1m" # 定義 kline 的 resolution 存檔用
+
+    elif kline == 300: interval = "5m"
+
+    elif kline == 900: interval = "15m"
+
+    elif kline == 1800:interval = "30m"
+
+    elif kline == 3600:interval = "1h"
+
+    elif kline == 7200:interval = "2h"
+
+    elif kline == 14400:interval = "4h"
+
+    else : interval = "1d"
+
+    pair = symbol.replace("/","-").upper() # 存檔時不能有 "/"
 
     now = datetime.now().date()
 
@@ -173,30 +188,62 @@ def get_all_history_data_time(start_time):
 
     unix_now = int(unix_now)
 
-    catch_time = start_time
+    print(unix_now)
 
-    while catch_time <= unix_now:
+    filename = './history/{}-{}-data.csv'.format(pair, interval) # 存檔的檔名
 
-        print(catch_time)
+    if os.path.isfile(filename):
 
-        get_ftx_historial_market(symbol,kline,catch_time)
+        temp_historical_data = pd.read_csv(filename,index_col = "time",parse_dates = ["time"])
 
-        catch_time += 432000
+        temp_historical_data_last = temp_historical_data.tail(1)
 
-    return(catch_time)
+        last_historical_data_time = temp_historical_data_last.index
+
+        last_historical_data_time = last_historical_data_time.astype(np.int64)
+
+        last_historical_data_time = last_historical_data_time // 10**9
+
+        last_historical_data_time = last_historical_data_time[0]
+
+        start_time = last_historical_data_time
+
+        while start_time <= unix_now:
+
+            print(start_time)
+
+            get_ftx_historial_data(symbol,kline,start_time)
+
+            start_time += 432000
+
+    else:
+
+        while start_time <= unix_now:
+
+            print(start_time)
+
+            get_ftx_historial_data(symbol,kline,start_time)
+
+            start_time += 432000
+
+    return(start_time)
+
+# ---------------------------------------------------------------------------------------- #
+
+
 
 # ======================= Function Test ============================ #
 
 symbol = "BTC/USD"
 
-kline = resolution['15m']
+kline = resolution['1d']
 
 start_time = start_dt_to_unix(2019,7,21)
 
 # end_time = start_time + 86400
 
-historical_data = get_all_history_data_time(start_time)
+get_ftx_all_historial_data(symbol, kline, start_time)
 
-#print(historical_data)
+# print(historical_data)
 
 # ---------------------------------------------------------------------------------------- #
