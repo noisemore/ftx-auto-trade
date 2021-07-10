@@ -74,7 +74,7 @@ def get_ftx_historial_data(symbol, kline, start_time):
 
         return None
     
-    historical_data = None # 為什麼我要放這一行?
+    # historical_data = None # 為什麼我要放這一行?
 
     if request_data.status_code == 200: # 除錯
 
@@ -198,19 +198,21 @@ def get_ftx_all_historial_data(symbol, kline, start_time):
 
         temp_historical_data_last = temp_historical_data.tail(1)
 
-        last_historical_data_time = temp_historical_data_last.index
+        # temp_historical_data_last = temp_historical_data_last.head(1)
 
+        last_historical_data_time = temp_historical_data_last.index
+        
         last_historical_data_time = last_historical_data_time.astype(np.int64)
 
         last_historical_data_time = last_historical_data_time // 10**9
-
+        
         last_historical_data_time = last_historical_data_time[0]
 
-        start_time = last_historical_data_time
+        start_time = last_historical_data_time - 28800
+
+        print(start_time)
 
         while start_time <= unix_now:
-
-            print(start_time)
 
             get_ftx_historial_data(symbol,kline,start_time)
 
@@ -219,8 +221,6 @@ def get_ftx_all_historial_data(symbol, kline, start_time):
     else:
 
         while start_time <= unix_now:
-
-            print(start_time)
 
             get_ftx_historial_data(symbol,kline,start_time)
 
@@ -236,7 +236,7 @@ def get_ftx_all_historial_data(symbol, kline, start_time):
 
 symbol = "BTC/USD"
 
-kline = resolution['1d']
+kline = resolution['15m']
 
 start_time = start_dt_to_unix(2019,7,21)
 
