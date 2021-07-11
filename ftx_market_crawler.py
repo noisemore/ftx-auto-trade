@@ -182,7 +182,7 @@ def get_ftx_all_historial_data(symbol, kline, start_time):
 
     pair = symbol.replace("/","-").upper() # 存檔時不能有 "/"
 
-    now = datetime.now().date()
+    now = datetime.utcnow()
 
     unix_now = time.mktime(now.timetuple())
 
