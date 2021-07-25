@@ -1,0 +1,62 @@
+from email import header
+import ccxt
+import config
+import pandas as pd
+import numpy as np
+import requests
+
+exchange = ccxt.ftx({
+    'apiKey': config.ftx_api_keys,
+    'secret': config.ftx_api_secret,
+    'headers': { 'FTX-SUBACCOUNT': config.sub_account},
+    'timeout': 3000,
+    'enableRateLimit ': True
+    })
+
+# exchange.verbose = True
+
+# dir_ex = dir(exchange)
+# for dir_ex in dir_ex:
+#     print(dir_ex)
+
+balances = exchange.fetch_balance()
+
+# ---------------------------------------------- #
+# balances = balances['info']['result']
+# balances = pd.DataFrame(balances)
+# balances = balances.set_index('coin')
+# print(balances)
+# print('')
+
+# free_coin = balances['free'].astype(bool)
+# print(free_coin)
+
+# 沒有錯誤但是balance 0.0 的布林值不是false
+
+# ---------------------------------------------- #
+
+coin = 'SRM'
+
+for item in balances['info']['result']:
+    if item['coin'] == coin:
+        free_balance = item['free']
+        print(free_balance)
+        break
+else:
+    print(balances)
+    raise Exception(f'result not found for {coin}')
+
+# renew stake
+params = {
+    "coin": coin,
+    "size": free_balance,
+    }
+request_staking  = exchange.private_get_staking_unstake_requests(params)
+print(request_staking)
+if not request_staking['success']:
+    print(request_staking.json())
+    raise Exception('lending fail')
+
+# 可以讀取錢包餘額,但是出現錯誤 ccxt.base.errors.ExchangeError: ftx {"success":false,"error":"Not authorized for subaccount-specific access"}
+
+# ---------------------------------------------- #
