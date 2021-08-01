@@ -14,79 +14,80 @@ import requests
 
 # ---------------------------------------------------------------------------------------------------------- #
 
-# 連結交易所
-exchange = ccxt.ftx({
-    'apiKey': config.ftx_api_keys,
-    'secret': config.ftx_api_secret,
-    'headers': {'FTX-SUBACCOUNT': config.sub_account},
-    'timeout': 3000,
-    'enableRateLimit ': True,
-    })
+def FTX_auto_staking(ftx_api_keys = config.ftx_api_keys, ftx_api_secret = config.ftx_api_secret, sub_account = config.sub_account):
+
+    # 連結交易所
+    exchange = ccxt.ftx({
+        'apiKey': ftx_api_keys,
+        'secret': ftx_api_secret,
+        'headers': {'FTX-SUBACCOUNT': sub_account},
+        'timeout': 3000,
+        'enableRateLimit ': True,
+        })
 
 # ---------------------------------------------------------------------------------------------------------- #
 
-# 可以質押的幣種
-stackable_coin = ['FTT','SRM','SRM_LOCKED','MSRM','MSRM_LOCKED','SOL','UBXT','FIDA','RAY']
+    # 可以質押的幣種
+    stackable_coin = ['FTT','SRM','SRM_LOCKED','MSRM','MSRM_LOCKED','SOL','UBXT','FIDA','RAY']
 
 # ---------------------------------------------------------------------------------------------------------- #
 
-# 取得錢包資訊並轉換資料類型
-balances = exchange.fetch_balance()
+    # 取得錢包資訊並轉換資料類型
+    balances = exchange.fetch_balance()
 
-balances = balances['info']['result']
-balances = pd.DataFrame(balances)
-balances = balances.set_index('coin')
+    balances = balances['info']['result']
+    balances = pd.DataFrame(balances)
+    balances = balances.set_index('coin')
 
-balances = balances.astype(np.float64)
-# print(balances)
-# print('')
+    balances = balances.astype(np.float64)
+    # print(balances)
+    # print('')
 
 # ---------------------------------------------------------------------------------------------------------- #
 
-# 取得可質押幣種
-free_coin = balances[balances['free']>0]
-# print(free_coin)
-# print('')
+    # 取得可質押幣種
+    free_coin = balances[balances['free']>0]
+    # print(free_coin)
+    # print('')
 
-free_coin_index = free_coin.index
-avalible_coin = free_coin_index.intersection(stackable_coin)
-# print(avalible_coin)
-# print('')
+    free_coin_index = free_coin.index
+    avalible_coin = free_coin_index.intersection(stackable_coin)
+    # print(avalible_coin)
+    # print('')
 
-# 判斷有無可質押幣種
-if len(avalible_coin) == 0:
-    print('Nothing to stake')
+    # 判斷有無可質押幣種
+    if len(avalible_coin) == 0:
+        print('Nothing to stake')
 
-else:
-    # 迴圈
-    for coin in avalible_coin:
-        stack_coin = free_coin.loc[[coin]]
-        # print(stack_coin)
-        # print('')
+    else:
+        # 迴圈
+        for coin in avalible_coin:
+            stack_coin = free_coin.loc[[coin]]
+            # print(stack_coin)
+            # print('')
 
-        # 取得可質押額度
-        stack_coin_balance = stack_coin['free']
-        stack_coin_balance = stack_coin_balance[coin]
-        # print(stack_coin_balance)
-        # print('')
+            # 取得可質押額度
+            stack_coin_balance = stack_coin['free']
+            stack_coin_balance = stack_coin_balance[coin]
+            # print(stack_coin_balance)
+            # print('')
 
-        # 取得幣種名稱
-        stack_coin_name = stack_coin.index[stack_coin['free']==stack_coin_balance][0]
-        # print (stack_coin_name)
-        # print('')
+            # 取得幣種名稱
+            stack_coin_name = stack_coin.index[stack_coin['free']==stack_coin_balance][0]
+            # print (stack_coin_name)
+            # print('')
 
-        # 設定參數
-        params = {
-            "coin": stack_coin_name,
-            "size": stack_coin_balance,
-                    }
-        # print(stack_coin_name)
-        # print(stack_coin_balance)
+            # 設定參數
+            params = {
+                "coin": stack_coin_name,
+                "size": stack_coin_balance,
+                        }
+            # print(stack_coin_name)
+            # print(stack_coin_balance)
 
-        # 送出要求
-        request_staking  = exchange.private_post_srm_stakes_stakes(params)
+            # 送出要求
+            request_staking  = exchange.private_post_srm_stakes_stakes(params)
 
-        print(request_staking)
-
+            print(request_staking)
 
 # ---------------------------------------------------------------------------------------------------------- #
