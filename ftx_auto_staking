@@ -1,62 +1,92 @@
-from email import header
+import asyncio
+from logging import addLevelName
 import ccxt
 import config
 import pandas as pd
 import numpy as np
 import requests
 
-exchange = ccxt.ftx({
-    'apiKey': config.ftx_api_keys,
-    'secret': config.ftx_api_secret,
-    'headers': { 'FTX-SUBACCOUNT': config.sub_account},
-    'timeout': 3000,
-    'enableRateLimit ': True
-    })
-
-# exchange.verbose = True
+# ---------------------------------------------------------------------------------------------------------- #
 
 # dir_ex = dir(exchange)
 # for dir_ex in dir_ex:
 #     print(dir_ex)
 
+# ---------------------------------------------------------------------------------------------------------- #
+
+# 連結交易所
+exchange = ccxt.ftx({
+    'apiKey': config.ftx_api_keys,
+    'secret': config.ftx_api_secret,
+    'headers': {'FTX-SUBACCOUNT': config.sub_account},
+    'timeout': 3000,
+    'enableRateLimit ': True,
+    })
+
+# ---------------------------------------------------------------------------------------------------------- #
+
+# 可以質押的幣種
+stackable_coin = ['FTT','SRM','SRM_LOCKED','MSRM','MSRM_LOCKED','SOL','UBXT','FIDA','RAY']
+
+# ---------------------------------------------------------------------------------------------------------- #
+
+# 取得錢包資訊並轉換資料類型
 balances = exchange.fetch_balance()
 
-# ---------------------------------------------- #
-# balances = balances['info']['result']
-# balances = pd.DataFrame(balances)
-# balances = balances.set_index('coin')
+balances = balances['info']['result']
+balances = pd.DataFrame(balances)
+balances = balances.set_index('coin')
+
+balances = balances.astype(np.float64)
 # print(balances)
 # print('')
 
-# free_coin = balances['free'].astype(bool)
+# ---------------------------------------------------------------------------------------------------------- #
+
+# 取得可質押幣種
+free_coin = balances[balances['free']>0]
 # print(free_coin)
+# print('')
 
-# 沒有錯誤但是balance 0.0 的布林值不是false
+free_coin_index = free_coin.index
+avalible_coin = free_coin_index.intersection(stackable_coin)
+# print(avalible_coin)
+# print('')
 
-# ---------------------------------------------- #
+# 判斷有無可質押幣種
+if len(avalible_coin) == 0:
+    print('Nothing to stake')
 
-coin = 'SRM'
-
-for item in balances['info']['result']:
-    if item['coin'] == coin:
-        free_balance = item['free']
-        print(free_balance)
-        break
 else:
-    print(balances)
-    raise Exception(f'result not found for {coin}')
+    # 迴圈
+    for coin in avalible_coin:
+        stack_coin = free_coin.loc[[coin]]
+        # print(stack_coin)
+        # print('')
 
-# renew stake
-params = {
-    "coin": coin,
-    "size": free_balance,
-    }
-request_staking  = exchange.private_get_staking_unstake_requests(params)
-print(request_staking)
-if not request_staking['success']:
-    print(request_staking.json())
-    raise Exception('lending fail')
+        # 取得可質押額度
+        stack_coin_balance = stack_coin['free']
+        stack_coin_balance = stack_coin_balance[coin]
+        # print(stack_coin_balance)
+        # print('')
 
-# 可以讀取錢包餘額,但是出現錯誤 ccxt.base.errors.ExchangeError: ftx {"success":false,"error":"Not authorized for subaccount-specific access"}
+        # 取得幣種名稱
+        stack_coin_name = stack_coin.index[stack_coin['free']==stack_coin_balance][0]
+        # print (stack_coin_name)
+        # print('')
 
-# ---------------------------------------------- #
+        # 設定參數
+        params = {
+            "coin": stack_coin_name,
+            "size": stack_coin_balance,
+                    }
+        # print(stack_coin_name)
+        # print(stack_coin_balance)
+
+        # 送出要求
+        request_staking  = exchange.private_post_srm_stakes_stakes(params)
+
+        print(request_staking)
+
+
+# ---------------------------------------------------------------------------------------------------------- #
