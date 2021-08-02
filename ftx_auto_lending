@@ -41,7 +41,6 @@ def FTX_auto_lending(ftx_api_keys = config.ftx_api_keys, ftx_api_secret = config
     lending_rates = lending_rates['result']
     lending_rates = pd.DataFrame(lending_rates)
     lending_rates = lending_rates.set_index('coin').astype(np.float64)
-    lending_rates = lending_rates #.astype(np.float64)
     lending_rates = lending_rates.loc[coin]
     lending_rates = math.floor((lending_rates['estimate'] * 1000000)) / 1000000
     # print(lending_rates)
