@@ -1,0 +1,71 @@
+import ccxt
+import config
+import pandas as pd
+import numpy as np
+
+# ---------------------------------------------------------------------------------------------------------- #
+
+def FTX_auto_lending(ftx_api_keys = config.ftx_api_keys, ftx_api_secret = config.ftx_api_secret, sub_account = config.sub_account):
+
+    # 連結交易所
+    exchange = ccxt.ftx({
+        'apiKey': ftx_api_keys,
+        'secret': ftx_api_secret,
+        'headers': {'FTX-SUBACCOUNT': sub_account},
+        'timeout': 3000,
+        'enableRateLimit ': True,
+        })
+
+# ---------------------------------------------------------------------------------------------------------- #
+    
+    # 取得錢包資訊並轉換資料類型
+    balances = exchange.fetch_balance()
+
+    balances = balances['info']['result']
+    balances = pd.DataFrame(balances)
+    balances = balances.set_index('coin')
+
+    balances = balances.astype(np.float64)
+    print(balances)
+    print('')
+
+# ---------------------------------------------------------------------------------------------------------- #
+    
+    # 設定借出幣種
+    coin = 'USD'
+
+# ---------------------------------------------------------------------------------------------------------- #
+
+    # 取得預估年化
+    lending_rates = exchange.private_get_spot_margin_lending_rates()
+    lending_rates = lending_rates['result']
+    lending_rates = pd.DataFrame(lending_rates)
+    lending_rates = lending_rates.set_index('coin').astype(np.float64)
+    lending_rates = lending_rates #.astype(np.float64)
+    lending_rates = lending_rates.loc[coin]
+    lending_rates = lending_rates['estimate']
+    # print(lending_rates)
+
+# ---------------------------------------------------------------------------------------------------------- #
+
+    # 取得借出幣種總額度
+    lending_total = balances.loc[coin]
+    lending_total = lending_total['total']
+    # print(lending_total)
+
+# ---------------------------------------------------------------------------------------------------------- #
+
+    # 設定參數
+    params = {
+            "coin": coin,
+            "size": lending_total,
+            "rate": lending_rates
+            }
+
+# ---------------------------------------------------------------------------------------------------------- #
+
+    # 送出要求
+    request_lending = exchange.private_post_spot_margin_offers(params)
+    print(request_lending)
+
+FTX_auto_lending()
